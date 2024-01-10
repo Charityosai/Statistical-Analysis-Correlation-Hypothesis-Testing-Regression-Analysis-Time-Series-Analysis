@@ -1,0 +1,889 @@
+```{r}
+# install the necessary packages
+install.packages("TTR")
+install.packages("forecast")
+install.packages("multcomp")
+install.packages("ggpubr")
+install.packages("stats")
+install.packages("RVAideMemoire")
+install.packages("correlation")
+install.packages("tidyverse")
+install.packages("psych")
+install.packages("corrplot")
+install.packages("leaps")
+install.packages("caTools")   
+install.packages('car')        
+install.packages("MASS")
+install.packages("outliers")
+install.packages("datarium")
+install.packages("qqplotr")
+install.packages("dplyr")
+install.packages("Shapiro-wilk")
+install.packages("ggplot2")
+install.packages("readxl")
+```
+
+
+
+```{r}
+# import the necessary libraries
+library("TTR")
+library(tidyverse)
+library(corrplot)
+library(psych)
+library(outliers)
+library(dplyr)
+library(correlation)
+library(RVAideMemoire)
+library(rstatix)
+library("readxl")
+library("ggplot2")
+library(datarium)
+library(qqplotr)
+library(car)
+library(forecast)
+```
+
+
+```{r}
+#import the data
+Demography_data <- read_excel("Demography dataset1.xlsx", sheet = "Data", na = "..")
+
+```
+
+
+```{r}
+#preview the dataset
+glimpse(Demography_data)
+```
+
+
+```{r}
+#check the different attributes contained in the dataset
+names(Demography_data)
+```
+
+```{r}
+#check the datatype and structure of the dataset
+str(Demography_data)
+```
+
+```{r}
+#check for missing values
+sum(is.na(Demography_data)) #the dataset contains no missing values
+```
+```{r}
+#Check the unique countries in the dataset
+unique (Demography_data$Country)
+```
+
+```{r}
+#Renaming the variables
+Country <- Demography_data$`Country Name`
+Year <- Demography_data$Time
+Population_growth_annual <- Demography_data$`Population growth (annual %) [SP.POP.GROW]`
+Death_rate <- Demography_data$`Death rate, crude (per 1,000 people) [SP.DYN.CDRT.IN]`
+Urban_population_growth <- Demography_data$`Urban population growth (annual %) [SP.URB.GROW]`
+Net_migration <- Demography_data$`Net migration [SM.POP.NETM]`
+Life_expectancy <- Demography_data$`Life expectancy at birth, total (years) [SP.DYN.LE00.IN]`
+Birth_rate <- Demography_data$`Fertility rate, total (births per woman) [SP.DYN.TFRT.IN]`
+```
+
+
+
+```{r}
+#replace the column names in the dataset with the new column names
+colnames(Demography_data) <- c("Country", "Year", "Population_growth_annual", "Death_rate", "Urban_population_growth", "Net_migration", "Life_expectancy", "Birth_rate")
+```
+
+
+
+```{r}
+#preview the dataset again to confirm column names have been changed
+glimpse(Demography_data)
+```
+
+
+```{r}
+#check for outliers by visualizing the variables using boxplot
+plot_dimension <- function(width_choice , height_choice) {
+  options(repr.plot.width=width_choice, repr.plot.height=height_choice)
+}
+
+plot_dimension(15,5)
+par(mfrow=c(2,3))
+boxplot(Demography_data$Population_growth_annual,
+        ylab = "Population growth annual",
+        main = "Population growth annual",
+        col= "lightblue",
+        outcol="black")
+boxplot(Demography_data$Death_rate,
+        ylab = "Death rate",
+        main = "Death rate",
+        col= "lightblue",
+        outcol="black")
+boxplot(Demography_data$Urban_population_growth,
+        ylab = "Urban population growth",
+        main = "Urban population growth",
+        col= "lightblue",
+        outcol="black")
+boxplot(Demography_data$Net_migration,
+        ylab = "Net migration",
+        main = "Net migration",
+        col= "lightblue",
+        outcol="black")
+boxplot(Demography_data$Life_expectancy,
+        ylab = "Life expectancy",
+        main = "Life expectancy",
+        col= "lightblue",
+        outcol="black")
+boxplot(Demography_data$Birth_rate,
+        ylab = "Birth rate",
+        main = "Birth rate",
+        col= "lightblue",
+        outcol="black")
+```
+
+
+
+```{r}
+#Create subsets of the main dataset to group countries according to their region
+African_countries <- c("Angola", "Ghana", "Kenya" , "Mozambique", "South Africa", "Zimbabwe")
+European_countries <- c("Denmark", "France", "Luxembourg" , "Norway", "Sweden", "Switzerland")
+
+# Create a new dataset containing records for the two regions i.e Africa and Europe 
+Africa <- subset(Demography_data, Country %in% African_countries)
+
+Europe <- subset(Demography_data, Country %in% European_countries)
+```
+
+
+
+```{r}
+#check the countries in each group
+unique (Africa$Country)
+```
+
+```{r}
+unique (Europe$Country)
+```
+
+
+```{r}
+#check for outliers in the different variables for the two regions
+plot_dimension <- function(width_choice , height_choice) {
+  options(repr.plot.width=width_choice, repr.plot.height=height_choice)
+}
+
+plot_dimension(20,15)
+par(mfrow=c(2,3))
+boxplot(Europe$Population_growth_annual, Africa$Population_growth_annual,
+        names = c("Europe", "Africa"),
+        col = c("lightblue", "lightyellow"),
+        ylab = "Population growth annual",
+        main = "Population growth annual",
+        outcol="black")
+boxplot(Europe$Death_rate, Africa$Death_rate,
+        names = c("Europe", "Africa"),
+        col = c("lightyellow", "lightblue"),
+        ylab = "Death rate",
+        main = "Death rate",
+        outcol="black")
+boxplot(Europe$Urban_population_growth, Africa$Urban_population_growth,
+        names = c("Europe", "Africa"),
+        col = c("lightyellow", "lightblue"),
+        ylab = "Urban population growth",
+        main = "Urban population growth",
+        outcol="black")
+boxplot(Europe$Net_migration,Africa$Net_migration,
+        names = c("Europe", "Africa"),
+        col = c("lightyellow", "lightblue"),
+        ylab = "Net migration",
+        main = "Net migration",
+        outcol="black")
+boxplot(Europe$Life_expectancy,Africa$Life_expectancy,
+        names = c("Europe", "Africa"),
+        col = c("lightyellow", "lightblue"),
+        ylab = "Life expectancy",
+        main = "Life expectancy",
+        outcol="black")
+boxplot(Europe$Birth_rate,Africa$Birth_rate,
+        names = c("Europe", "Africa"),
+        col = c("lightyellow", "lightblue"),
+        ylab = "Birth rate",
+        main = "Birth rate",
+        outcol="black")
+```
+
+
+
+
+```{r}
+#DESCRIPTIVE STATISTICAL ANALYSIS
+# Year and Country are removed as they are not necessary for this summary statistics.
+Demography_data1 <- subset(Demography_data, select = -c(Year))
+Demography_data2 <- subset(Demography_data, select = -c(Country, Year))
+Africa_Region <- subset(Africa, select = -c(Country))
+Europe_Region <- subset(Europe, select = -c(Country))
+```
+
+
+```{r}
+# descriptive statistical analysis
+#computing summary statistics for for the main dataset
+Demography_data_stat= psych::describe(Demography_data2)
+Demography_data_stat.t=t(Demography_data_stat)#transpose the output
+(Demography_data_stat.t)
+```
+
+
+```{r}
+#computing summary statistics for Africa region
+Demography_data_stat_Africa= psych::describe(Africa_Region)
+Demography_data_stat_Africa.t=t(Demography_data_stat_Africa)#transpose the output
+(Demography_data_stat_Africa.t)
+```
+
+
+
+```{r}
+#computing summary statistics for Europe region
+Demography_data_stat_Europe= psych::describe(Europe_Region)
+Demography_data_stat_Europe.t=t(Demography_data_stat_Europe)#transpose the output
+(Demography_data_stat_Europe.t)
+```
+
+
+
+```{r}
+plot_dimension <- function(width_choice , height_choice) {
+  options(repr.plot.width=width_choice, repr.plot.height=height_choice)
+}
+
+plot_dimension(15,10)
+par(mfrow=c(2,3))
+hist(Demography_data$Population_growth_annual, col = "lightblue", main = "Population growth annual", )
+hist(Demography_data$Death_rate, col = "lightblue", main = "Death_rate")
+hist(Demography_data$Urban_population_growth, col = "lightblue", main = "Urban population growth")
+hist(Demography_data$Net_migration, col = "lightblue", main = "Net_migration")
+hist(Demography_data$Life_expectancy, col = "lightblue", main = "Life_expectancy")
+hist(Demography_data$Birth_rate, col = "lightblue", main = "Birth_rate")
+```
+
+
+
+```{r}
+#visualize the distribution of the variables using density plot 
+Demography_data_subset <- subset(Demography_data, select = c("Population_growth_annual", "Death_rate", "Urban_population_growth", "Net_migration", "Life_expectancy", "Birth_rate"))
+# Melt the data for better ggplot2 compatibility
+library(reshape2)
+Demography_data_melted <- melt(Demography_data_subset)
+# Plot density plots using ggplot2
+ggplot(Demography_data_melted, aes(x = value, fill = variable)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~variable, scales = "free") +
+  theme_minimal()
+```
+
+
+```{r}
+#CORRELATION ANALYSIS
+```
+
+
+
+```{r}
+#CORRELATION ANALYSIS
+#plot correlation matrix
+round(cor(Demography_data2, method ='spearman') , digits = 2)
+```
+
+
+```{r}
+#visualize the correlation matrix
+# Set the layout for multiple plots
+corrplot(cor(Demography_data2,method ='spearman'), method = "number", tl.col = "black", type = "upper", tl.cex = 0.7)
+```
+
+
+```{r}
+# correlation analysis for Africa
+round(cor(Africa_Region, method ='spearman') , digits = 2)
+corrplot(cor(Africa_Region,method ='spearman'), method = "number", tl.col = "black", type = "upper", tl.cex = 0.7)
+```
+
+
+
+```{r}
+# correlation analysis for Europe
+round(cor(Europe_Region, method ='spearman') , digits = 2)
+
+corrplot(cor(Europe_Region,method ='spearman'), method = "number", tl.col = "black", type = "upper", tl.cex = 0.7)
+```
+
+
+
+```{r}
+#HYPOTHESIS TESTING
+```
+
+
+```{r}
+#Create a new dataframe with the columns needed for the hypothesis
+Demography_data_classification <- Demography_data1 %>% group_by(Country)
+Demography_data_classification2 <- dplyr::summarise(Demography_data_classification, 
+                                       AveragePopulation_growth_annual= mean(Population_growth_annual), 
+                                       AverageUrban_population_growth = mean(Urban_population_growth))
+Demography_data_classification2
+```
+
+
+
+```{r}
+#Create a new dataframe with the different countries and average Urban_population_growth categorized 
+#as(low or high) based on the set threshold of 1.5.
+x <- Demography_data_classification2 %>% dplyr::filter (AverageUrban_population_growth <=1.5)
+
+z <- Demography_data_classification2 %>% dplyr::filter (AverageUrban_population_growth >1.5)
+
+New1<-data.frame(AveragePopulation_growth_annual = x$AveragePopulation_growth_annual)
+New1$Urban_population_growth_category = 'Low'
+
+New3<-data.frame(AveragePopulation_growth_annual = z$AveragePopulation_growth_annual)
+New3$Urban_population_growth_category = 'High'
+
+Urban_growth_classification <-data.frame(rbind(New1,New3))
+Urban_growth_classification
+```
+
+
+
+```{r}
+#Assumption2: Normality test
+#Assessing the normality of the data using Shapiro-Wilk normality test 
+byf.shapiro(AveragePopulation_growth_annual ~ Urban_population_growth_category, data=Urban_growth_classification)
+
+#p-values for both categories are greater than 0.05 which indicates that normality is not violated
+```
+
+
+```{r}
+#HYPOTHESIS TEST 1
+#Null Hypothesis (H0): There is no significant difference between the means of population growth for countries with low urban population growth and countries with high urban population growth
+#Alternative Hypothesis (H1): There is significant difference between the means of population growth for countries with low urban population growth and countries with high urban population growth
+
+#Welch Two Sample t-test
+t.test(AveragePopulation_growth_annual  ~ Urban_population_growth_category, data=Urban_growth_classification)
+```
+
+
+```{r}
+#HYPOTHESIS TEST 2
+#Null Hypothesis (H0): There is no significant difference in the mean population growth between countries in Europe and Africa.
+#Alternative Hypothesis (H1): There is significant difference in the mean population growth between countries in Europe and Africa.
+
+#Map each country's Population_growth_annual to the corresponding region 
+Africa1 <- data.frame(Population_growth_annual = Africa$Population_growth_annual)
+Africa1$Region = 'Africa'
+
+Europe1 <- data.frame(Population_growth_annual = Europe$Population_growth_annual)
+Europe1$Region = 'Europe'
+
+Country_region <- data.frame(rbind(Africa1,Europe1))
+Country_region
+```
+
+
+```{r}
+#check for normality using Q-Q Plots - Europe
+qqnorm(Europe1$Population_growth_annual)
+qqline(Europe1$Population_growth_annual)
+
+```
+
+
+```{r}
+#check for normality using Q-Q Plots - Africa
+qqnorm(Africa1$Population_growth_annual)
+qqline(Africa1$Population_growth_annual)
+```
+
+
+```{r}
+#Reconfirm non-normality using Shapiro
+#Assessing the normality of the data using Shapiro-Wilk normality test 
+byf.shapiro(Population_growth_annual ~ Region, data=Country_region)
+
+#Both p-values are less than 0.05 which indicates that normality is violated
+```
+
+
+
+```{r}
+# Assuming 'Population_growth_annual' is the variable of interest and 'Region' is the grouping variable in 'Country_region' dataset
+
+# Log transformation
+by(
+  Country_region$Population_growth_annual,
+  Country_region$Region,
+  function(x) shapiro.test(log10(x))
+)
+
+# Square root transformation
+by(
+  Country_region$Population_growth_annual,
+  Country_region$Region,
+  function(x) shapiro.test(sqrt(x))
+)
+
+# Cube root transformation
+by(
+  Country_region$Population_growth_annual,
+  Country_region$Region,
+  function(x) shapiro.test(sqrt(x)^(1/3))
+)
+```
+
+
+
+```{r}
+#HYPOTHESIS TEST 2
+#Wilcox hypothesis test/Mann-Whitney U Test 
+Country_region$Region <- as.factor(Country_region$Region)
+
+wilcox.test(Population_growth_annual ~ Region, data = Country_region)
+
+#From the output, we can see the p-value is 2.2e-16, p is less that 0.05 and we can reject the Null Hypothesis and accept the Alternative Hypothesis.
+
+```
+
+
+```{r}
+#HYPOTHESIS TEST 3 - One way ANOVA
+#H0: There is no significant difference between means of population growth rate in Norway, Sweden and Switzerland
+#H1: There is significant difference between means of population growth rate in Norway, Sweden and Switzerland
+```
+
+
+
+
+```{r}
+#check for outliers in the dataset
+Europe_test_case <- subset(Europe, Country %in% c("Norway", "Sweden", "Switzerland"))
+boxplot(Population_growth_annual ~ Country , data = Europe_test_case, names = c("Norway","Sweden","Switzerland"),
+ xlab="European country", ylab="Population growth rate",
+ main="Population growth rate for each country")
+```
+
+
+
+```{r}
+#Assumption 5 - Test for normality 
+byf.shapiro(Population_growth_annual ~ Country , data=Europe_test_case)
+
+#All p-values are greater than 0.05 and we shouldn’t reject the null hypothesis. 
+#We can confirm that population growth is normally distributed for each of the selected European countries.
+```
+
+
+
+```{r}
+#Assumption 6 - homogeneity of variances
+bartlett.test(Population_growth_annual ~ Country , data=Europe_test_case)
+```
+
+
+```{r}
+#ANOVA
+oneway.test(Population_growth_annual ~ Country , data=Europe_test_case, var.equal = TRUE)
+
+#The p-value is greater than 0.05 and it indicates that we cannot reject the null hypothesis
+#in other words, we couldn't confirm that there is a significant difference between means of population growth rate in Norway, Sweden and Switzerland
+```
+
+
+```{r}
+#REGRESSION ANALYSIS
+
+```
+
+
+
+```{r}
+Demography_data_mean <- Demography_data %>% group_by(Country)
+
+Demography_data_mean <- dplyr::summarise(Demography_data_mean, AvePopulation_growth_annual = mean(Population_growth_annual), 
+                                    AveAge_Death_rate = mean(Death_rate),
+                                    AveUrban_population_growth = mean(Urban_population_growth),
+                                    AveNet_migration = mean(Net_migration),
+                                    AveLife_expectancy = mean(Life_expectancy),
+                                    AveBirth_rate = mean(Birth_rate))
+(Demography_data_mean)
+```
+
+
+
+
+
+```{r}
+# MULTIPLE LINEAR REGRESSION
+#Objective: We want to examine the possible linear relation between average Population_growth_annual and one independent variable using forward step method
+#To find out which independent variable is possibly better at explaining the Population_growth_annual, 
+#we will plot a scatter plot and build a correlation matrix between all numerical variables.
+
+#use pair plot to also check evidence of linear relationship between average population growth and other independent variables
+pairs(Demography_data_mean[,c(2,3,4,5,6,7)], lower.panel = NULL, pch = 19,cex = 0.2)
+
+
+#The output shows linearity between Population_growth_annual and Urban_population_growth, Birth_rate
+```
+
+
+
+
+
+```{r}
+#lm function is used to fit the regression model
+model_1 <-lm(AvePopulation_growth_annual ~ AveUrban_population_growth, Demography_data_mean)
+summary.lm(model_1)
+```
+
+
+
+
+```{r}
+#Scatter plot to visualise the fitted regression line:
+plot(AvePopulation_growth_annual ~ AveUrban_population_growth, Demography_data_mean,
+ col = "blue",
+ main = "Regression: Annual population growth & Annual urban population growth",
+ xlab = "Population_growth_annual",
+ ylab = "Urban_population_growth")
+abline(model_1, col="red")
+```
+
+
+
+```{r}
+#Assumption2: Residuals’ Independence
+plot(model_1, 1)
+
+```
+
+
+
+```{r}
+#Assumption 3: Normality of residuals
+plot(model_1, 2)
+```
+
+
+durbinWatsonTest(model_1)
+
+```{r}
+#Assumption 4: Equal variances of the residuals (Homoscedasticity)
+plot(model_1, 3)
+```
+
+```{r}
+durbinWatsonTest(model_1)
+```
+
+
+```{r}
+#Test the model using new data
+#Assuming Average urban population growth for a particular country is 2.5
+new_data <- data.frame(AveUrban_population_growth = c(2.5)) 
+
+#Predict the average population growth using the linear regression model
+prediction_population_growth <- predict(model_1, newdata = new_data)
+
+#Display the predictions
+print(predictions)
+```
+
+
+
+```{r}
+#MultipleLinear Regression
+model_2 <-lm(AvePopulation_growth_annual ~ AveUrban_population_growth + AveBirth_rate , Demography_data_mean)
+summary.lm(model_2)
+```
+
+
+
+```{r}
+#Assumption 1: Linearity
+pairs(Demography_data_mean[,c(2,4,7)], lower.panel = NULL, pch = 19,cex = 0.2)
+```
+
+
+```{r}
+#Assumption2: Residuals’ Independence
+plot(model_2, 1) 
+```
+
+
+
+```{r}
+#Assumption3: Normality of residuals: 
+plot(model_2, 2)
+```
+
+
+
+```{r}
+#Assumption 4: Equal variances of the residuals (Homoscedasticity) 
+plot(model_2, 3)
+```
+
+
+
+```{r}
+#Checking for multicollinearity
+vif(model_2)
+
+#since value is less than 5, we can conclude that there is no collinearity
+#All 5 assumptions were approved, and we can confirm our fitted regression line
+```
+
+
+
+```{r}
+# TIME SERIES ANALYSIS
+```
+
+
+
+```{r}
+Demography_data_by_year <- Demography_data %>% group_by(Country)
+
+Demography_data_mean_year <- dplyr::summarise(Demography_data_by_year, AvePopulation_growth_annual = mean(Population_growth_annual), 
+                                    AveAge_Death_rate = mean(Death_rate),
+                                    AveUrban_population_growth = mean(Urban_population_growth),
+                                    AveNet_migration = mean(Net_migration),
+                                    AveLife_expectancy = mean(Life_expectancy),
+                                    AveBirth_rate = mean(Birth_rate))
+(Demography_data_mean_year)
+
+
+Demography_data_mean_year_sorted <- Demography_data_mean_year[order(-Demography_data_mean_year$AvePopulation_growth_annual), ]
+Demography_data_mean_year_sorted
+```
+
+
+
+```{r}
+
+#Create subset with Angola's data
+Angola <-Africa[Africa$Country == "Angola",]
+```
+
+
+
+
+
+
+```{r}
+#Create subset with Angola's data
+Angola <-Africa[Africa$Country == "Angola",]
+
+#store the data in a time series object with a frequency of 1 for yearly timeseries 
+Angola_population_timeseries <- ts(Angola$Population_growth_annual, 
+                                 frequency=1, start=c(2006,1))
+Angola_population_timeseries
+```
+
+
+
+```{r}
+plot.ts(Angola_population_timeseries)
+
+```
+
+
+```{r}
+#Decomposing Non-Seasonal Data using smoothing method
+Angola_population_timeseriesSMA <- TTR::SMA(Angola_population_timeseries,n=2)
+plot.ts(Angola_population_timeseriesSMA)
+```
+
+
+```{r}
+#Fit the Holt-Winters model to the time series data
+Angola_population_TSforecasts <- HoltWinters(Angola_population_timeseries, gamma=FALSE)
+Angola_population_TSforecasts
+
+```
+
+
+```{r}
+#Check SSE measure
+Angola_population_TSforecasts$SSE
+```
+
+
+
+```{r}
+#Plot observed and fitted values for the 15 year period
+plot(Angola_population_TSforecasts)
+```
+
+
+```{r}
+#forecasting for a 10 years period
+HoltWinters_Angola_forecast <- forecast(Angola_population_TSforecasts, h=10)
+HoltWinters_Angola_forecast
+```
+
+
+```{r}
+plot(HoltWinters_Angola_forecast)
+```
+
+
+
+```{r}
+#use Ljung-Box test and correlogram is used to check whether the predictive model could be improved upon by checking whether the in-sample forecast errors 
+
+#Plot auto correlation function (correlogram)
+acf(HoltWinters_Angola_forecast$residuals, lag.max=8, na.action = na.pass)
+```
+
+
+```{r}
+#Ljung-Box test
+Box.test(HoltWinters_Angola_forecast$residuals, lag=8, type="Ljung-Box")
+
+#p-value = 0.7414, indicating that there is little evidence of non-zero autocorrelations in the in-sample forecast errors at lags 1-4
+```
+
+
+
+```{r}
+#Residuals plot
+plot.ts(HoltWinters_Angola_forecast$residuals)
+```
+
+
+
+```{r}
+
+HoltWinters_Angola_forecast$residuals <- HoltWinters_Angola_forecast$residuals[!is.na(HoltWinters_Angola_forecast$residuals)]
+
+plotForecastErrors <- function(forecasterrors)
+{
+  # make a histogram of the forecast errors:
+  mybinsize <- IQR(forecasterrors,na.rm=TRUE)/4
+  mysd   <- sd(forecasterrors,na.rm=TRUE)
+  mymin  <- min(forecasterrors,na.rm=TRUE) - mysd*5
+  mymax  <- max(forecasterrors,na.rm=TRUE) + mysd*3
+  # generate normally distributed data with mean 0 and standard deviation mysd
+  mynorm <- rnorm(10000, mean=0, sd=mysd)
+  mymin2 <- min(mynorm)
+  mymax2 <- max(mynorm)
+  if (mymin2 < mymin) { mymin <- mymin2 }
+  if (mymax2 > mymax) { mymax <- mymax2 }
+  # make a red histogram of the forecast errors, with the normally distributed data overlaid:
+  mybins <- seq(mymin, mymax, mybinsize)
+  hist(forecasterrors, col="red", freq=FALSE, breaks=mybins)
+  # freq=FALSE ensures the area under the histogram = 1
+  # generate normally distributed data with mean 0 and standard deviation mysd
+  myhist <- hist(mynorm, plot=FALSE, breaks=mybins)
+  # plot the normal curve as a blue line on top of the histogram of forecast errors:
+  points(myhist$mids, myhist$density, type="l", col="blue", lwd=2)
+}
+
+plotForecastErrors(HoltWinters_Angola_forecast$residuals) 
+
+```
+
+
+```{r}
+mean(HoltWinters_Angola_forecast$residuals)
+```
+
+
+
+
+```{r}
+#TIME SERIES 2 - ARIMA MODEL
+```
+
+
+```{r}
+library(tseries)
+#p-value is above 0.05 which indicates that it is non-stationary
+
+#ADF test is used to test if the series is stationary
+adf.test(Angola_population_timeseries)
+```
+
+```{r}
+#plot correlogram
+acf(Angola_population_timeseries)
+```
+
+
+```{r}
+#Use auto.arima() function to find the appropriate ARIMA model and fit the ARIMA model
+ARIMA_Angola_timeseries <- auto.arima(Angola_population_timeseries)
+
+ARIMA_Angola_timeseries
+```
+
+```{r}
+#10 year forecast using the ARIMA model
+ARIMA_Angola_TSforecast <- forecast(ARIMA_Angola_timeseries, h=10) 
+ARIMA_Angola_TSforecast
+```
+
+
+```{r}
+#plot forecast
+plot(ARIMA_Angola_TSforecast)#plot forecast
+
+```
+
+
+
+
+```{r}
+# investigate forecast error
+acf(ARIMA_Angola_TSforecast$residuals, lag.max = 8)
+```
+
+```{r}
+Box.test(ARIMA_Angola_TSforecast$residuals, lag=4, type="Ljung-Box")
+
+```
+
+```{r}
+
+
+#make time plot of forecast errors
+plot.ts(ARIMA_Angola_TSforecast$residuals)    
+```
+
+```{r}
+plotForecastErrors(ARIMA_Angola_TSforecast$residuals)
+```
+
+
+```{r}
+mean(ARIMA_Angola_TSforecast$residuals)
+
+```
+
+```{r}
+library(forecast)
+
+arima_accuracy <- accuracy(ARIMA_Angola_TSforecast)
+hw_accuracy <- accuracy(HoltWinters_Angola_forecast)
+
+print("ARIMA Accuracy:")
+print(arima_accuracy)
+
+print("Holt-Winters Accuracy:")
+print(hw_accuracy)
+
+```
